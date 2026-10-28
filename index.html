@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>F&amp;B Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f2ef;
+      --surface: #fcfcfb;
+      --border: #e4e3df;
+      --grid: #e9e8e4;
+      --text: #0b0b0b;
+      --text-2: #52514e;
+      --text-3: #807f7a;
+      --series: #2a78d6;
+      --good: #1a7f37;
+      --bad: #c62828;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .05);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #111110;
+        --surface: #1a1a19;
+        --border: #2e2d2b;
+        --grid: #292826;
+        --text: #f0efec;
+        --text-2: #c3c2b7;
+        --text-3: #8f8e87;
+        --series: #3987e5;
+        --good: #4cc36b;
+        --bad: #ff6b6b;
+        --shadow: none;
+      }
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #111110;
+      --surface: #1a1a19;
+      --border: #2e2d2b;
+      --grid: #292826;
+      --text: #f0efec;
+      --text-2: #c3c2b7;
+      --text-3: #8f8e87;
+      --series: #3987e5;
+      --good: #4cc36b;
+      --bad: #ff6b6b;
+      --shadow: none;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: 14px;
+    }
+    main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    h1 { margin: 0; font-size: 1.5rem; font-weight: 650; }
+    .sub { color: var(--text-2); margin-top: 4px; }
+    .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+    .seg button {
+      font: inherit;
+      border: none;
+      background: none;
+      color: var(--text-2);
+      padding: 6px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+    .seg button[aria-pressed="true"] { background: var(--text); color: var(--surface); }
+    .seg button:focus-visible { outline: 2px solid var(--series); outline-offset: 1px; }
+
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+    .card h2 { margin: 0 0 2px; font-size: .95rem; font-weight: 600; }
+    .card .hint { color: var(--text-3); font-size: .8rem; margin-bottom: 12px; }
+    .kpi { grid-column: span 3; }
+    .span-8 { grid-column: span 8; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    @media (max-width: 900px) {
+      .kpi { grid-column: span 6; }
+      .span-8, .span-4, .span-6 { grid-column: span 12; }
+    }
+
+    .kpi .label { color: var(--text-2); font-size: .85rem; }
+    .kpi .value { font-size: 1.75rem; font-weight: 650; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+    .delta { font-size: .8rem; color: var(--text-3); }
+    .delta b { font-weight: 600; }
+    .delta .good { color: var(--good); }
+    .delta .bad { color: var(--bad); }
+
+    .chart { position: relative; width: 100%; }
+    .chart svg { display: block; width: 100%; overflow: visible; }
+    .chart text { fill: var(--text-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .chart .gridline { stroke: var(--grid); stroke-width: 1; }
+    .chart .bar { fill: var(--series); transition: opacity .12s; }
+    .chart.hovering .bar { opacity: .35; }
+    .chart.hovering .bar.on { opacity: 1; }
+    .chart .hit { fill: transparent; cursor: crosshair; }
+
+    .tooltip {
+      position: fixed;
+      pointer-events: none;
+      background: var(--text);
+      color: var(--surface);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: .8rem;
+      line-height: 1.4;
+      white-space: nowrap;
+      transform: translate(-50%, calc(-100% - 10px));
+      opacity: 0;
+      transition: opacity .1s;
+      z-index: 10;
+    }
+    .tooltip.show { opacity: 1; }
+    .tooltip b { font-weight: 600; }
+
+    .hbars { display: grid; gap: 12px; }
+    .hbar-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+    .hbar-top span:last-child { color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .hbar-track { height: 10px; border-radius: 4px; background: var(--grid); overflow: hidden; }
+    .hbar-fill { height: 100%; border-radius: 4px; background: var(--series); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 6px; text-align: right; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--text-3); font-weight: 500; font-size: .8rem; }
+    tr:last-child td { border-bottom: none; }
+    td small { display: block; color: var(--text-3); font-size: .75rem; }
+    .table-wrap { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1 id="title">F&amp;B Dashboard</h1>
+        <div class="sub" id="range"></div>
+      </div>
+      <div class="seg" role="group" aria-label="Period">
+        <button data-days="7">7 days</button>
+        <button data-days="14">14 days</button>
+        <button data-days="30">30 days</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <div class="card kpi"><div class="label">Revenue</div><div class="value" id="kpi-revenue"></div><div class="delta" id="d-revenue"></div></div>
+      <div class="card kpi"><div class="label">Orders</div><div class="value" id="kpi-orders"></div><div class="delta" id="d-orders"></div></div>
+      <div class="card kpi"><div class="label">Avg. order value</div><div class="value" id="kpi-aov"></div><div class="delta" id="d-aov"></div></div>
+      <div class="card kpi"><div class="label">Food cost</div><div class="value" id="kpi-cost"></div><div class="delta" id="d-cost"></div></div>
+
+      <div class="card span-8">
+        <h2>Daily revenue</h2>
+        <div class="hint">Hover a bar for details</div>
+        <div class="chart" id="chart-daily"></div>
+      </div>
+      <div class="card span-4">
+        <h2>Revenue by category</h2>
+        <div class="hint">Share of total revenue</div>
+        <div class="hbars" id="categories"></div>
+      </div>
+
+      <div class="card span-6">
+        <h2>Peak hours</h2>
+        <div class="hint">Average revenue per hour of the day</div>
+        <div class="chart" id="chart-hours"></div>
+      </div>
+      <div class="card span-6">
+        <h2>Top menu items</h2>
+        <div class="hint">Ranked by revenue</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Item</th><th>Sold</th><th>Revenue</th><th>Margin</th></tr></thead>
+            <tbody id="items"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div class="tooltip" id="tooltip"></div>
+
+  <script>
+    // ---------- Settings: edit these to match your business ----------
+
+    const BUSINESS_NAME = 'My Café';
+    const CURRENCY = 'USD';   // e.g. 'IDR', 'EUR', 'SGD'
+
+    // price and cost are per portion; perDay is a typical daily quantity (used for sample data)
+    const MENU = [
+      { name: 'Grilled Chicken Bowl', category: 'Mains',    price: 14,  cost: 4.6, perDay: 38 },
+      { name: 'Beef Burger',          category: 'Mains',    price: 15,  cost: 5.4, perDay: 34 },
+      { name: 'Margherita Pizza',     category: 'Mains',    price: 13,  cost: 3.6, perDay: 26 },
+      { name: 'Pasta Carbonara',      category: 'Mains',    price: 14,  cost: 4.2, perDay: 22 },
+      { name: 'Fish & Chips',         category: 'Mains',    price: 16,  cost: 6.1, perDay: 14 },
+      { name: 'Iced Latte',           category: 'Drinks',   price: 5,   cost: 1.1, perDay: 70 },
+      { name: 'Fresh Orange Juice',   category: 'Drinks',   price: 5.5, cost: 1.8, perDay: 30 },
+      { name: 'Iced Tea',             category: 'Drinks',   price: 3.5, cost: 0.5, perDay: 45 },
+      { name: 'Chocolate Lava Cake',  category: 'Desserts', price: 7,   cost: 2.1, perDay: 18 },
+      { name: 'Cheesecake',           category: 'Desserts', price: 6.5, cost: 2.0, perDay: 15 },
+      { name: 'Fries',                category: 'Sides',    price: 4.5, cost: 0.9, perDay: 40 },
+      { name: 'Caesar Salad',         category: 'Sides',    price: 9,   cost: 2.8, perDay: 16 }
+    ];
+
+    const OPEN_HOUR = 10, CLOSE_HOUR = 22;
+    // Relative busyness of each opening hour (10:00 … 21:00): lunch and dinner peaks
+    const HOUR_WEIGHTS = [3, 5, 12, 11, 5, 3, 3, 5, 10, 12, 9, 4];
+    const ITEMS_PER_ORDER = 2.4;
+
+    // ---------- Sample data (replace generateHistory with your real sales) ----------
+
+    // Seeded random so the sample numbers are the same on every reload
+    function mulberry32(seed) {
+      return () => {
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    // Returns one record per day, oldest first: { date, qty: [quantity sold per MENU item] }
+    function generateHistory(days) {
+      const rand = mulberry32(42);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const out = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const weekend = [0, 5, 6].includes(date.getDay());
+        const dayFactor = (weekend ? 1.3 : 1) * (0.85 + rand() * 0.3) * (1 + (days - i) * 0.003);
+        const qty = MENU.map(m => Math.round(m.perDay * dayFactor * (0.8 + rand() * 0.4)));
+        out.push({ date, qty });
+      }
+      return out;
+    }
+
+    const HISTORY = generateHistory(60);
+
+    // ---------- Aggregation ----------
+
+    function summarize(records) {
+      const qty = MENU.map((_, j) => records.reduce((s, r) => s + r.qty[j], 0));
+      const revenue = qty.reduce((s, q, j) => s + q * MENU[j].price, 0);
+      const cost = qty.reduce((s, q, j) => s + q * MENU[j].cost, 0);
+      const orders = Math.round(qty.reduce((s, q) => s + q, 0) / ITEMS_PER_ORDER);
+      return { qty, revenue, cost, orders, aov: revenue / orders, costPct: cost / revenue };
+    }
+
+    const dayRevenue = r => r.qty.reduce((s, q, j) => s + q * MENU[j].price, 0);
+
+    // ---------- Formatting ----------
+
+    const money = new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY, maximumFractionDigits: 0 });
+    const money2 = new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY, maximumFractionDigits: 2 });
+    const moneyShort = new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY, notation: 'compact', maximumFractionDigits: 1 });
+    const num = new Intl.NumberFormat();
+    const pct = new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 1 });
+    const dayFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+    const weekdayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+    // ---------- Rendering ----------
+
+    const $ = id => document.getElementById(id);
+    const tooltip = $('tooltip');
+
+    // higherIsGood: whether an increase should read as good (food cost % is the opposite)
+    function renderDelta(el, now, prev, higherIsGood = true, asPoints = false) {
+      const change = asPoints ? now - prev : (now - prev) / prev;
+      const up = change >= 0;
+      const good = up === higherIsGood;
+      const text = asPoints
+        ? (Math.abs(change) * 100).toFixed(1) + ' pts'
+        : pct.format(Math.abs(change));
+      el.innerHTML = `<span class="${good ? 'good' : 'bad'}"><b>${up ? '▲' : '▼'} ${text}</b></span> vs previous period`;
+    }
+
+    function niceMax(v) {
+      const p = 10 ** Math.floor(Math.log10(v));
+      return [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map(s => s * p).find(s => s >= v);
+    }
+
+    // Column with 4px rounded top, anchored to the baseline
+    function columnPath(x, y, w, h) {
+      const r = Math.min(4, w / 2, h);
+      return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+    }
+
+    // rows: [{ label, value, tip }]
+    function renderColumns(el, rows, fmtAxis) {
+      const W = el.clientWidth, H = 220;
+      const m = { t: 8, r: 4, b: 24, l: 52 };
+      const iw = W - m.l - m.r, ih = H - m.t - m.b;
+      const max = niceMax(Math.max(...rows.map(r => r.value)));
+      const step = iw / rows.length;
+      const bw = Math.max(2, step - Math.max(2, step * 0.25));
+      const labelEvery = Math.ceil(rows.length / Math.max(1, Math.floor(iw / 56)));
+
+      let svg = `<svg height="${H}" role="img" aria-label="${el.dataset.label || ''}">`;
+      for (let i = 0; i <= 4; i++) {
+        const v = max * i / 4, y = m.t + ih - ih * i / 4;
+        svg += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/>`;
+        svg += `<text x="${m.l - 8}" y="${y + 4}" text-anchor="end">${fmtAxis(v)}</text>`;
+      }
+      rows.forEach((r, i) => {
+        const h = ih * r.value / max;
+        const x = m.l + i * step + (step - bw) / 2;
+        svg += `<path class="bar" data-i="${i}" d="${columnPath(x, m.t + ih - h, bw, h)}"/>`;
+        if (i % labelEvery === 0) {
+          svg += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${r.label}</text>`;
+        }
+      });
+      // Invisible full-height hit targets, wider than the bars
+      rows.forEach((r, i) => {
+        svg += `<rect class="hit" data-i="${i}" x="${m.l + i * step}" y="${m.t}" width="${step}" height="${ih}"/>`;
+      });
+      el.innerHTML = svg + '</svg>';
+
+      const svgEl = el.querySelector('svg');
+      svgEl.addEventListener('pointermove', e => {
+        const hit = e.target.closest('.hit');
+        if (!hit) return hide();
+        const i = +hit.dataset.i;
+        el.classList.add('hovering');
+        el.querySelectorAll('.bar').forEach(b => b.classList.toggle('on', +b.dataset.i === i));
+        const bar = el.querySelector(`.bar[data-i="${i}"]`).getBoundingClientRect();
+        tooltip.innerHTML = rows[i].tip;
+        tooltip.style.left = bar.left + bar.width / 2 + 'px';
+        tooltip.style.top = bar.top + 'px';
+        tooltip.classList.add('show');
+      });
+      svgEl.addEventListener('pointerleave', hide);
+      function hide() {
+        el.classList.remove('hovering');
+        tooltip.classList.remove('show');
+      }
+    }
+
+    let period = 7;
+
+    function render() {
+      const current = HISTORY.slice(-period);
+      const previous = HISTORY.slice(-period * 2, -period);
+      const now = summarize(current);
+      const prev = summarize(previous);
+
+      $('title').textContent = BUSINESS_NAME;
+      $('range').textContent = `${dayFmt.format(current[0].date)} – ${dayFmt.format(current.at(-1).date)} · last ${period} days`;
+      document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.days === period));
+
+      // KPIs
+      $('kpi-revenue').textContent = money.format(now.revenue);
+      $('kpi-orders').textContent = num.format(now.orders);
+      $('kpi-aov').textContent = money2.format(now.aov);
+      $('kpi-cost').textContent = pct.format(now.costPct);
+      renderDelta($('d-revenue'), now.revenue, prev.revenue);
+      renderDelta($('d-orders'), now.orders, prev.orders);
+      renderDelta($('d-aov'), now.aov, prev.aov);
+      renderDelta($('d-cost'), now.costPct, prev.costPct, false, true);
+
+      // Daily revenue
+      const daily = $('chart-daily');
+      daily.dataset.label = 'Daily revenue';
+      renderColumns(daily, current.map(r => {
+        const s = summarize([r]);
+        return {
+          label: dayFmt.format(r.date),
+          value: s.revenue,
+          tip: `<b>${weekdayFmt.format(r.date)}</b><br>${money.format(s.revenue)} · ${num.format(s.orders)} orders`
+        };
+      }), v => moneyShort.format(v));
+
+      // Peak hours: spread the average daily revenue over opening hours
+      const hours = $('chart-hours');
+      hours.dataset.label = 'Average revenue per hour';
+      const totalWeight = HOUR_WEIGHTS.reduce((a, b) => a + b, 0);
+      const avgDay = now.revenue / period;
+      renderColumns(hours, HOUR_WEIGHTS.map((w, i) => {
+        const h = OPEN_HOUR + i;
+        const v = avgDay * w / totalWeight;
+        return {
+          label: h + ':00',
+          value: v,
+          tip: `<b>${h}:00 – ${h + 1}:00</b><br>${money.format(v)} avg per day`
+        };
+      }), v => moneyShort.format(v));
+
+      // Categories
+      const cats = {};
+      MENU.forEach((m, j) => cats[m.category] = (cats[m.category] || 0) + now.qty[j] * m.price);
+      const catRows = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+      const catMax = catRows[0][1];
+      $('categories').innerHTML = catRows.map(([name, v]) => `
+        <div>
+          <div class="hbar-top"><span>${name}</span><span>${money.format(v)} · ${pct.format(v / now.revenue)}</span></div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:${(v / catMax * 100).toFixed(1)}%"></div></div>
+        </div>`).join('');
+
+      // Top items
+      const items = MENU.map((m, j) => ({ ...m, sold: now.qty[j], revenue: now.qty[j] * m.price }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 6);
+      $('items').innerHTML = items.map(it => `
+        <tr>
+          <td>${it.name}<small>${it.category}</small></td>
+          <td>${num.format(it.sold)}</td>
+          <td>${money.format(it.revenue)}</td>
+          <td>${pct.format(1 - it.cost / it.price)}</td>
+        </tr>`).join('');
+    }
+
+    document.querySelector('.seg').addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (btn) { period = +btn.dataset.days; render(); }
+    });
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(render, 100);
+    });
+
+    render();
+  </script>
+</body>
+</html>
