@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>F&amp;B Dashboard</title>
+  <title>Dasbor F&amp;B</title>
   <style>
     :root {
       color-scheme: light;
@@ -154,44 +154,44 @@
   <main>
     <header>
       <div>
-        <h1 id="title">F&amp;B Dashboard</h1>
+        <h1 id="title">Dasbor F&amp;B</h1>
         <div class="sub" id="range"></div>
       </div>
-      <div class="seg" role="group" aria-label="Period">
-        <button data-days="7">7 days</button>
-        <button data-days="14">14 days</button>
-        <button data-days="30">30 days</button>
+      <div class="seg" role="group" aria-label="Periode">
+        <button data-days="7">7 hari</button>
+        <button data-days="14">14 hari</button>
+        <button data-days="30">30 hari</button>
       </div>
     </header>
 
     <section class="grid">
-      <div class="card kpi"><div class="label">Revenue</div><div class="value" id="kpi-revenue"></div><div class="delta" id="d-revenue"></div></div>
-      <div class="card kpi"><div class="label">Orders</div><div class="value" id="kpi-orders"></div><div class="delta" id="d-orders"></div></div>
-      <div class="card kpi"><div class="label">Avg. order value</div><div class="value" id="kpi-aov"></div><div class="delta" id="d-aov"></div></div>
-      <div class="card kpi"><div class="label">Food cost</div><div class="value" id="kpi-cost"></div><div class="delta" id="d-cost"></div></div>
+      <div class="card kpi"><div class="label">Pendapatan</div><div class="value" id="kpi-revenue"></div><div class="delta" id="d-revenue"></div></div>
+      <div class="card kpi"><div class="label">Pesanan</div><div class="value" id="kpi-orders"></div><div class="delta" id="d-orders"></div></div>
+      <div class="card kpi"><div class="label">Rata-rata per pesanan</div><div class="value" id="kpi-aov"></div><div class="delta" id="d-aov"></div></div>
+      <div class="card kpi"><div class="label">Biaya bahan</div><div class="value" id="kpi-cost"></div><div class="delta" id="d-cost"></div></div>
 
       <div class="card span-8">
-        <h2>Daily revenue</h2>
-        <div class="hint">Hover a bar for details</div>
+        <h2>Pendapatan harian</h2>
+        <div class="hint">Arahkan kursor ke batang untuk detail</div>
         <div class="chart" id="chart-daily"></div>
       </div>
       <div class="card span-4">
-        <h2>Revenue by category</h2>
-        <div class="hint">Share of total revenue</div>
+        <h2>Pendapatan per kategori</h2>
+        <div class="hint">Porsi dari total pendapatan</div>
         <div class="hbars" id="categories"></div>
       </div>
 
       <div class="card span-6">
-        <h2>Peak hours</h2>
-        <div class="hint">Average revenue per hour of the day</div>
+        <h2>Jam sibuk</h2>
+        <div class="hint">Rata-rata pendapatan per jam</div>
         <div class="chart" id="chart-hours"></div>
       </div>
       <div class="card span-6">
-        <h2>Top menu items</h2>
-        <div class="hint">Ranked by revenue</div>
+        <h2>Menu terlaris</h2>
+        <div class="hint">Diurutkan berdasarkan pendapatan</div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Item</th><th>Sold</th><th>Revenue</th><th>Margin</th></tr></thead>
+            <thead><tr><th>Menu</th><th>Terjual</th><th>Pendapatan</th><th>Margin</th></tr></thead>
             <tbody id="items"></tbody>
           </table>
         </div>
@@ -201,26 +201,28 @@
   <div class="tooltip" id="tooltip"></div>
 
   <script>
-    // ---------- Settings: edit these to match your business ----------
+    // ---------- Pengaturan: sesuaikan dengan usaha Anda ----------
 
-    const BUSINESS_NAME = 'My Café';
-    const CURRENCY = 'USD';   // e.g. 'IDR', 'EUR', 'SGD'
+    const BUSINESS_NAME = 'Kafe Saya';
+    const CURRENCY = 'IDR';   // e.g. 'USD', 'EUR', 'SGD'
+    const LOCALE = 'id-ID';
 
-    // price and cost are per portion; perDay is a typical daily quantity (used for sample data)
+    // price (harga jual) dan cost (modal) per porsi; perDay = rata-rata terjual per hari (untuk data contoh)
     const MENU = [
-      { name: 'Grilled Chicken Bowl', category: 'Mains',    price: 14,  cost: 4.6, perDay: 38 },
-      { name: 'Beef Burger',          category: 'Mains',    price: 15,  cost: 5.4, perDay: 34 },
-      { name: 'Margherita Pizza',     category: 'Mains',    price: 13,  cost: 3.6, perDay: 26 },
-      { name: 'Pasta Carbonara',      category: 'Mains',    price: 14,  cost: 4.2, perDay: 22 },
-      { name: 'Fish & Chips',         category: 'Mains',    price: 16,  cost: 6.1, perDay: 14 },
-      { name: 'Iced Latte',           category: 'Drinks',   price: 5,   cost: 1.1, perDay: 70 },
-      { name: 'Fresh Orange Juice',   category: 'Drinks',   price: 5.5, cost: 1.8, perDay: 30 },
-      { name: 'Iced Tea',             category: 'Drinks',   price: 3.5, cost: 0.5, perDay: 45 },
-      { name: 'Chocolate Lava Cake',  category: 'Desserts', price: 7,   cost: 2.1, perDay: 18 },
-      { name: 'Cheesecake',           category: 'Desserts', price: 6.5, cost: 2.0, perDay: 15 },
-      { name: 'Fries',                category: 'Sides',    price: 4.5, cost: 0.9, perDay: 40 },
-      { name: 'Caesar Salad',         category: 'Sides',    price: 9,   cost: 2.8, perDay: 16 }
+      { name: 'Nasi Goreng Spesial', category: 'Makanan Utama', price: 45000, cost: 14000, perDay: 38 },
+      { name: 'Ayam Bakar',          category: 'Makanan Utama', price: 48000, cost: 17000, perDay: 34 },
+      { name: 'Mie Goreng',          category: 'Makanan Utama', price: 38000, cost: 10500, perDay: 26 },
+      { name: 'Sop Buntut',          category: 'Makanan Utama', price: 75000, cost: 30000, perDay: 14 },
+      { name: 'Nasi Rendang',        category: 'Makanan Utama', price: 55000, cost: 20000, perDay: 22 },
+      { name: 'Es Kopi Susu',        category: 'Minuman',       price: 25000, cost: 6000,  perDay: 70 },
+      { name: 'Jus Jeruk Segar',     category: 'Minuman',       price: 22000, cost: 7000,  perDay: 30 },
+      { name: 'Es Teh Manis',        category: 'Minuman',       price: 10000, cost: 1500,  perDay: 45 },
+      { name: 'Pisang Goreng Keju',  category: 'Camilan',       price: 25000, cost: 7000,  perDay: 40 },
+      { name: 'Kentang Goreng',      category: 'Camilan',       price: 22000, cost: 5000,  perDay: 30 },
+      { name: 'Es Campur',           category: 'Pencuci Mulut', price: 28000, cost: 8500,  perDay: 18 },
+      { name: 'Klepon',              category: 'Pencuci Mulut', price: 18000, cost: 5000,  perDay: 15 }
     ];
+
 
     const OPEN_HOUR = 10, CLOSE_HOUR = 22;
     // Relative busyness of each opening hour (10:00 … 21:00): lunch and dinner peaks
@@ -272,13 +274,13 @@
 
     // ---------- Formatting ----------
 
-    const money = new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY, maximumFractionDigits: 0 });
-    const money2 = new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY, maximumFractionDigits: 2 });
-    const moneyShort = new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY, notation: 'compact', maximumFractionDigits: 1 });
-    const num = new Intl.NumberFormat();
-    const pct = new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 1 });
-    const dayFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
-    const weekdayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const money = new Intl.NumberFormat(LOCALE, { style: 'currency', currency: CURRENCY, maximumFractionDigits: 0 });
+    const moneyShort = new Intl.NumberFormat(LOCALE, { style: 'currency', currency: CURRENCY, notation: 'compact', maximumFractionDigits: 1 });
+    const num = new Intl.NumberFormat(LOCALE);
+    const num1 = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const pct = new Intl.NumberFormat(LOCALE, { style: 'percent', maximumFractionDigits: 1 });
+    const dayFmt = new Intl.DateTimeFormat(LOCALE, { month: 'short', day: 'numeric' });
+    const weekdayFmt = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', month: 'short', day: 'numeric' });
 
     // ---------- Rendering ----------
 
@@ -291,14 +293,17 @@
       const up = change >= 0;
       const good = up === higherIsGood;
       const text = asPoints
-        ? (Math.abs(change) * 100).toFixed(1) + ' pts'
+        ? num1.format(Math.abs(change) * 100) + ' poin'
         : pct.format(Math.abs(change));
-      el.innerHTML = `<span class="${good ? 'good' : 'bad'}"><b>${up ? '▲' : '▼'} ${text}</b></span> vs previous period`;
+      el.innerHTML = `<span class="${good ? 'good' : 'bad'}"><b>${up ? '▲' : '▼'} ${text}</b></span> dibanding periode sebelumnya`;
     }
 
-    function niceMax(v) {
-      const p = 10 ** Math.floor(Math.log10(v));
-      return [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map(s => s * p).find(s => s >= v);
+    // Round axis steps to 1, 2 or 5 × 10ⁿ so tick labels stay readable
+    function niceScale(v) {
+      const raw = v / 5;
+      const p = 10 ** Math.floor(Math.log10(raw));
+      const step = [1, 2, 5, 10].map(s => s * p).find(s => s >= raw);
+      return { step, ticks: Math.ceil(v / step) };
     }
 
     // Column with 4px rounded top, anchored to the baseline
@@ -312,14 +317,15 @@
       const W = el.clientWidth, H = 220;
       const m = { t: 8, r: 4, b: 24, l: 52 };
       const iw = W - m.l - m.r, ih = H - m.t - m.b;
-      const max = niceMax(Math.max(...rows.map(r => r.value)));
+      const { step: tickStep, ticks } = niceScale(Math.max(...rows.map(r => r.value)));
+      const max = tickStep * ticks;
       const step = iw / rows.length;
       const bw = Math.max(2, step - Math.max(2, step * 0.25));
       const labelEvery = Math.ceil(rows.length / Math.max(1, Math.floor(iw / 56)));
 
       let svg = `<svg height="${H}" role="img" aria-label="${el.dataset.label || ''}">`;
-      for (let i = 0; i <= 4; i++) {
-        const v = max * i / 4, y = m.t + ih - ih * i / 4;
+      for (let i = 0; i <= ticks; i++) {
+        const v = tickStep * i, y = m.t + ih - ih * i / ticks;
         svg += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/>`;
         svg += `<text x="${m.l - 8}" y="${y + 4}" text-anchor="end">${fmtAxis(v)}</text>`;
       }
@@ -366,13 +372,13 @@
       const prev = summarize(previous);
 
       $('title').textContent = BUSINESS_NAME;
-      $('range').textContent = `${dayFmt.format(current[0].date)} – ${dayFmt.format(current.at(-1).date)} · last ${period} days`;
+      $('range').textContent = `${dayFmt.format(current[0].date)} – ${dayFmt.format(current.at(-1).date)} · ${period} hari terakhir`;
       document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.days === period));
 
       // KPIs
       $('kpi-revenue').textContent = money.format(now.revenue);
       $('kpi-orders').textContent = num.format(now.orders);
-      $('kpi-aov').textContent = money2.format(now.aov);
+      $('kpi-aov').textContent = money.format(now.aov);
       $('kpi-cost').textContent = pct.format(now.costPct);
       renderDelta($('d-revenue'), now.revenue, prev.revenue);
       renderDelta($('d-orders'), now.orders, prev.orders);
@@ -381,19 +387,19 @@
 
       // Daily revenue
       const daily = $('chart-daily');
-      daily.dataset.label = 'Daily revenue';
+      daily.dataset.label = 'Pendapatan harian';
       renderColumns(daily, current.map(r => {
         const s = summarize([r]);
         return {
           label: dayFmt.format(r.date),
           value: s.revenue,
-          tip: `<b>${weekdayFmt.format(r.date)}</b><br>${money.format(s.revenue)} · ${num.format(s.orders)} orders`
+          tip: `<b>${weekdayFmt.format(r.date)}</b><br>${money.format(s.revenue)} · ${num.format(s.orders)} pesanan`
         };
       }), v => moneyShort.format(v));
 
       // Peak hours: spread the average daily revenue over opening hours
       const hours = $('chart-hours');
-      hours.dataset.label = 'Average revenue per hour';
+      hours.dataset.label = 'Rata-rata pendapatan per jam';
       const totalWeight = HOUR_WEIGHTS.reduce((a, b) => a + b, 0);
       const avgDay = now.revenue / period;
       renderColumns(hours, HOUR_WEIGHTS.map((w, i) => {
@@ -402,7 +408,7 @@
         return {
           label: h + ':00',
           value: v,
-          tip: `<b>${h}:00 – ${h + 1}:00</b><br>${money.format(v)} avg per day`
+          tip: `<b>${h}:00 – ${h + 1}:00</b><br>${money.format(v)} rata-rata per hari`
         };
       }), v => moneyShort.format(v));
 
